@@ -686,6 +686,17 @@ h2.sec{font-family:var(--display); font-weight:600; letter-spacing:.05em}
 .itname.r-sp,.inm.r-sp{background:linear-gradient(90deg,#7b2ff7,#d4483b,#d9b24a); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:900}
 .itemget.spdrop{border-color:#7b2ff7; box-shadow:0 0 20px rgba(123,47,247,.5); animation:spshine 2s infinite}
 
+
+/* ===== v18: gloria ===== */
+#lvlup{position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; background:rgba(10,8,4,.55); backdrop-filter:blur(3px)}
+#lvlup.on{display:flex; animation:fadein .3s}
+.lvlcard{text-align:center; padding:34px 44px; border-radius:22px; background:linear-gradient(180deg,#2d2619,#1c1812); border:1.5px solid #8a6a14; box-shadow:0 10px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(242,220,155,.3); animation:lvlpop .5s cubic-bezier(.2,1.4,.4,1)}
+@keyframes lvlpop{0%{transform:scale(.6); opacity:0}100%{transform:scale(1); opacity:1}}
+.lvlcard .lw{font-size:2.6rem}
+.lvlcard .ln{font-family:var(--display); font-weight:900; font-size:1.5rem; background:var(--goldgrad); -webkit-background-clip:text; background-clip:text; color:transparent; letter-spacing:.04em}
+.lvlcard .lt2{color:#cbb67a; font-size:.85rem; margin-top:4px}
+.sello{display:inline-flex; align-items:center; gap:6px; background:var(--goodbg); border:1px solid var(--good); color:var(--good); border-radius:999px; padding:4px 12px; font-size:.78rem; font-weight:700}
+
 </style>
 </head>
 <body>
@@ -758,6 +769,7 @@ h2.sec{font-family:var(--display); font-weight:600; letter-spacing:.05em}
 </div>
 
 <div id="toasts"></div>
+<div id="lvlup" onclick="this.classList.remove('on')"><div class="lvlcard"><div class="lw">🏛️</div><div class="ln" id="lvlupname"></div><div class="lt2" id="lvluptit"></div></div></div>
 <div id="modalbg"><div class="modal" id="modal"></div></div>
 
 <script>
@@ -1143,7 +1155,8 @@ function renderTest(){
       save(); renderTest();
     };
   });
-  TQ=null;
+  if(TQ&&TQ.cur&&!TQ.done){ showMcq(); return; }   /* test en curso: reanudar, no machacar */
+  TQ=null; try{ delete S.tq; }catch(e){}
   const mt=masteryTest(S.prefs.testScope), nf=failCount(S.prefs.testScope);
   const n=S.prefs.testScope.reduce((a,sid)=>a+TESTS[sid].length,0);
   $('#testzone').innerHTML=`
@@ -1176,6 +1189,14 @@ function startTest(mode){
   TQ={mode, queue: samplePool(p, mode==='t20'?Math.min(20,p.length):Math.min(8,p.length)), idx:0, ok:0, ko:0, fallos:[], answered:false, cur:null, n:0, perm:null};
   showMcq();
 }
+function saveTQ(){
+  try{
+    if(!TQ||TQ.done){ delete S.tq; save(); return; }
+    S.tq={mode:TQ.mode, scope:S.prefs.testScope.slice(), idx:TQ.idx, ok:TQ.ok, ko:TQ.ko, n:TQ.n,
+      queue:TQ.queue.map(q=>q.id), fallos:TQ.fallos.map(q=>q.id), curid:TQ.cur?TQ.cur.id:null};
+    save();
+  }catch(e){}
+}
 function showMcq(){
   const z=$('#testzone');
   if(TQ.mode==='t20'&&TQ.idx>=TQ.queue.length) return endTest();
@@ -1185,7 +1206,7 @@ function showMcq(){
     if(!more.length) return endTest();
     TQ.queue=TQ.queue.concat(more);
   }
-  const m=TQ.queue[TQ.idx]; TQ.cur=m; TQ.answered=false;
+  const m=TQ.queue[TQ.idx]; TQ.cur=m; TQ.answered=false; saveTQ();
   const perm=m.opciones.map((_,i)=>i);
   for(let i=perm.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [perm[i],perm[j]]=[perm[j],perm[i]]; }
   TQ.perm=perm;
@@ -1240,10 +1261,12 @@ function answerMcq(vi){
   const ex=$('#texpl'); ex.innerHTML=(good?'✅ Correcta. ':'❌ ')+esc(m.explicacion||''); ex.classList.add('on');
   gainXP(good?3:1,true);
   try{addSXP(m.sid||S.prefs.sim,good?3:1,good);}catch(e){}
+  saveTQ();
   $('#tnav').innerHTML=`<button class="btn primary" onclick="nextMcq()">${TQ.mode==='t20'&&TQ.idx+1>=TQ.queue.length?'Ver resultado':'Siguiente'} → &nbsp;<span class="small" style="opacity:.7">[espacio]</span></button>${TQ.mode!=='t20'?'<button class="btn" onclick="endTest()">Terminar</button>':''}`;
 }
 function nextMcq(){ if(!TQ||!TQ.answered) return; TQ.idx++; showMcq(); }
 function endTest(){
+  try{ if(TQ) TQ.done=true; delete S.tq; save(); }catch(e){}
   try{ if(TQ&&TQ.mode==='t20'&&(TQ.ok+TQ.ko)>=20&&S.v10){ const nota=Math.round(TQ.ok/2*10)/10; const k=recKey(); if(!S.v10.rec[k]||nota>S.v10.rec[k]){ S.v10.rec[k]=nota; if(nota>=9) toast('🏆 Récord: '+nota+'/10'); } save(); checkFeats(); } }catch(e){}
   const z=$('#testzone');
   const tot=TQ.ok+TQ.ko;
@@ -1624,12 +1647,41 @@ function startBattle(sid,node,variant){
   nextBQ();
   show('camp');
 }
+function saveBattle(){
+  try{
+    if(!B||!B.alive){ delete S.battle; save(); return; }
+    S.battle={sid:B.sid,node:B.node,type:B.type,risk:!!B.risk,enemy:B.enemy,ehp:B.ehp,ehpMax:B.ehpMax,php:B.php,phpMax:B.phpMax,
+      streak:B.streak,correct:B.correct,fails:B.fails,xpGot:B.xpGot,asked:B.asked,seen:B.seen.slice(-80),
+      requeue:B.requeue.map(r=>({id:r.m.id,at:r.at})),reqHist:B.reqHist,shield:B.shield,freeOwl:B.freeOwl,
+      qid:B.q?B.q.id:null,advance:B.advance,rage:!!B.rage};
+    save();
+  }catch(e){}
+}
+function findQ(id){ for(const sid of Object.keys(TESTS)){ const m=TESTS[sid].find(x=>x.id===id); if(m) return m; } return null; }
+function resumeBattle(){
+  const sv=S.battle; if(!sv) return false;
+  try{
+    let pool;
+    if(sv.type==='exped'){ let all=[]; DATA.forEach(s=>all=all.concat(TESTS[s.id])); pool=all.map(m=>({m,w:wOf(m)*staleW(m)})); }
+    else if(sv.type==='siege'){ pool=TESTS[sv.sid].map(m=>({m,w:wOf(m)*staleW(m)})); }
+    else pool=battlePool(sv.sid,sv.node);
+    B={sid:sv.sid,node:sv.node,type:sv.type,risk:sv.risk,alive:true,enemy:sv.enemy,ehp:sv.ehp,ehpMax:sv.ehpMax,php:sv.php,phpMax:sv.phpMax,
+      streak:sv.streak,correct:sv.correct,fails:sv.fails,xpGot:sv.xpGot,asked:Math.max(0,sv.asked-1),seen:sv.seen||[],
+      requeue:(sv.requeue||[]).map(r=>({m:findQ(r.id),at:r.at})).filter(r=>r.m),reqHist:sv.reqHist||{},
+      shield:sv.shield,freeOwl:sv.freeOwl||0,usedOwl:false,q:null,answered:false,t0:0,advance:sv.advance,rage:sv.rage,pool};
+    const q=sv.qid&&findQ(sv.qid);
+    if(q){ B.q=q; B.answered=false; B.usedOwl=false; B.perm=[0,1,2].sort(()=>Math.random()-.5); B.t0=Date.now(); B.asked++; }
+    else { nextBQ(); return true; }
+    return true;
+  }catch(e){ delete S.battle; return false; }
+}
 function nextBQ(){
   if(!B||!B.alive) return;
   const due=B.requeue.find(r=>B.asked>=r.at);
   if(due){ B.q=due.m; B.requeue=B.requeue.filter(r=>r!==due); }
   else { B.q=drawQ(); B.seen.push(B.q.id); if(B.seen.length>80) B.seen.shift(); }
   B.answered=false; B.usedOwl=false; B.perm=[0,1,2].sort(()=>Math.random()-.5); B.t0=Date.now(); B.asked++;
+  saveBattle();
   renderBattle();
 }
 function renderBattle(){
@@ -1653,7 +1705,7 @@ function renderBattle(){
       <button class="chip" onclick="fleeBattle()" title="Huir al mapa">🏳</button>
     </div>
     </div>
-    <div class="prow">
+    <div class="prow" ${B.type==='oraculo'?'style="display:none"':''}>
       <span class="hearts" id="hearts">${Array.from({length:B.phpMax},(_,i)=>`<span class="${i<B.php?'':'lost'}">❤️</span>`).join('')}</span>
       <span class="streakf" id="streakf">${B.streak>=3?'🔥 racha '+B.streak+' · ¡crítico activo!':(B.streak>0?'racha '+B.streak:'')}</span>
       <span class="items">${Object.keys(ITEMS).map(k=>{const n=inv.filter(x=>x===k).length; return `<button class="itemb" title="${ITEMS[k].n}: ${ITEMS[k].d}" ${n&&!B.answered?'':'disabled'} onclick="useItem('${k}')">${ITEMS[k].e}${n>1?'×'+n:''}</button>`;}).join('')}</span>
@@ -1708,7 +1760,7 @@ function bAnswer(vi){
   if(good){
     const pk=(typeof perks==='function')?perks():{crit:0,critStreak:3};
     const needed=(pk.critStreak||3)-1; /* racha previa necesaria */
-    const crit=(B.streak>=needed)||secs<=8+(pk.crit||0);
+    const crit=(B.type==='oraculo')?false:((B.streak>=needed)||secs<=8+(pk.crit||0));
     const dmg=crit?2:1;
     B.streak++; B.correct++; B.ehp=Math.max(0,B.ehp-dmg);
     const xp=crit?4:3; gainXP(xp); B.xpGot+=xp;
@@ -1723,7 +1775,8 @@ function bAnswer(vi){
   } else {
     document.querySelectorAll('#bopts .opt').forEach(b=>{ if(+b.dataset.vi===vi) b.classList.add('ko'); });
     B.streak=0; B.fails++;
-    if(B.shield){ B.shield=false; feed=`<div class="bxp">⏳ <b>La Clepsidra absorbe el golpe.</b> ${esc(m.explicacion||'')}</div>`; snd('item'); }
+    if(B.type==='oraculo'){ feed=`<div class="bxp">👁 <b>El Eco anota tu duda.</b> ${esc(m.explicacion||'')}</div>`; snd('bad'); }
+    else if(B.shield){ B.shield=false; feed=`<div class="bxp">⏳ <b>La Clepsidra absorbe el golpe.</b> ${esc(m.explicacion||'')}</div>`; snd('item'); }
     else {
       B.php--; snd('bad'); vib([30,40,30]);
       $('#battle').classList.add('shake'); dmgFloat('-1 ❤','var(--bad)');
@@ -1736,7 +1789,7 @@ function bAnswer(vi){
   }
   $('#streakf').textContent= B.streak>=3?'🔥 racha '+B.streak+' · ¡crítico activo!':(B.streak>0?'racha '+B.streak:'');
   $('#bfeed').innerHTML=feed+`<button class="btn primary bcont" onclick="bNext()">${B.ehp<=0?'🏆 Victoria':(B.php<=0?'Fin del combate':'Continuar')} → <span class="small" style="opacity:.7">[espacio]</span></button>`;
-  refreshItemRow(); save();
+  refreshItemRow(); saveBattle();
 }
 function bNext(){
   if(!B||!B.alive||!B.answered) return;
@@ -1744,7 +1797,7 @@ function bNext(){
   if(B.php<=0) return endBattle(false);
   nextBQ();
 }
-function fleeBattle(){ B=null; openTerr(curTerr||DATA[0].id); }
+function fleeBattle(){ B=null; delete S.battle; save(); openTerr(curTerr||DATA[0].id); }
 function dropItem(){
   const keys=Object.keys(ITEMS);
   const k=keys[Math.floor(Math.random()*keys.length)];
@@ -1753,7 +1806,7 @@ function dropItem(){
   inv.push(k); return k;
 }
 function endBattle(win){
-  B.alive=false;
+  B.alive=false; delete S.battle;
   const t=terrS(B.sid), c=colG(B.sid), m=sMeta(B.sid);
   let bonus=0, drops=[], marmol=0;
   if(win){
@@ -2064,9 +2117,9 @@ show=function(sc){
     document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.s===sc));
     document.querySelectorAll('.screen').forEach(e=>e.classList.remove('on'));
     $('#s-'+sc).classList.add('on');
-    if(sc==='camp') renderCamp(); else { BD=null; renderCity(); }
+    if(sc==='camp'){ if(B&&B.alive&&!B.answered) B.t0=Date.now(); renderCamp(); } else { BD=null; renderCity(); }
     window.scrollTo({top:0});
-  } else { if(B){B.alive=false; B=null;} BD=null; _origShow(sc); }
+  } else { BD=null; _origShow(sc); }
 };
 const _origGainXP=gainXP;
 gainXP=function(n,quiet){ _origGainXP(n,quiet); const st=statsS(); st.bs=Math.max(st.bs||0, (S.streak&&S.streak.n)||0); };
@@ -2684,6 +2737,7 @@ renderInicio=function(){
 };
 /* ---------- arranque v10 ---------- */
 v10S(); questS(); checkLore(true); checkFeats();
+if(S.battle){ if(resumeBattle()){ setTimeout(()=>toast('⚔ Combate en curso recuperado — te espera en Campaña'),1200); } }
 if(typeof cur!=='undefined'&&cur==='inicio'){ try{renderInicio();}catch(e){} }
 if(!uiS().intro){
   uiS().intro=true; save();
@@ -2854,90 +2908,126 @@ function syncBadge(state){
   save=function(){ _sv(); if(syncCfg()&&SY.dirty) syncBadge('dirty'); };
   setTimeout(()=>syncBadge(SY&&SY.status==='token'?'err':'ok'),800);
 })();
-/* ---------- música medieval generativa ---------- */
-const MUSIC={on:true,playing:false,timer:null,next:0,bar:0};
+/* ---------- música medieval generativa v2: secciones, variedad, silencio instantáneo ---------- */
+const MUSIC={on:true,playing:false,timer:null,next:0,bar:0,sec:0,secBar:0,started:false};
+let MGAIN=null;
+function mg(){ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); if(!MGAIN){ MGAIN=AC.createGain(); MGAIN.gain.value=0; MGAIN.connect(AC.destination);} return MGAIN; }
 function musicPref(){ if(S.music===undefined) S.music=true; return S.music; }
-function setMusic(v){ S.music=v; save(); const b=document.getElementById('musicbtn'); if(b) b.classList.toggle('off',!v); if(v) startMusic(); else stopMusic(); }
-const MKEY=[146.83,164.81,174.61,196.00,220.00,246.94,261.63,293.66,329.63,349.23,392.00,440.00]; /* D dórico: D E F G A B C D E F G A */
-const CHORDS=[[0,2,4],[ -1,2,4],[3,5,7],[0,2,4]]; /* Dm, C(aprox), G, Dm sobre la escala */
-function mNote(ix){ let i=ix; let oct=0; while(i<0){i+=7;oct--;} while(i>=MKEY.length){i-=7;oct++;} return MKEY[i]*Math.pow(2,oct); }
-function pluck(f,t,dur,vol){ /* laúd */
-  const o=AC.createOscillator(),o2=AC.createOscillator(),g=AC.createGain(),lp=AC.createBiquadFilter();
+function setMusic(v){ S.music=v; save(); const b=document.getElementById('musicbtn'); if(b) b.classList.toggle('off',!v); if(v){ MUSIC.started=true; startMusic(); } else stopMusic(); }
+const MKEY=[146.83,164.81,174.61,196.00,220.00,246.94,261.63,293.66,329.63,349.23,392.00,440.00];
+function mNote(ix){ let i=ix,oct=0; while(i<0){i+=7;oct--;} while(i>=MKEY.length){i-=7;oct++;} return MKEY[i]*Math.pow(2,oct); }
+const hum=()=> (Math.random()*0.02-0.01);
+const hv=v=> v*(0.8+Math.random()*0.4);
+function pluck(f,t,dur,vol){
+  const o=AC.createOscillator(),o2=AC.createOscillator(),gn=AC.createGain(),lp=AC.createBiquadFilter();
   o.type='triangle'; o2.type='sine'; o.frequency.value=f; o2.frequency.value=f*2.001;
   lp.type='lowpass'; lp.frequency.value=2200;
-  o.connect(lp); o2.connect(lp); lp.connect(g); g.connect(AC.destination);
-  g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.012); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(lp); o2.connect(lp); lp.connect(gn); gn.connect(mg());
+  gn.gain.setValueAtTime(.0001,t); gn.gain.exponentialRampToValueAtTime(vol,t+.012); gn.gain.exponentialRampToValueAtTime(.0001,t+dur);
   o.start(t); o.stop(t+dur+.05); o2.start(t); o2.stop(t+dur+.05);
 }
 function flute(f,t,dur,vol){
-  const o=AC.createOscillator(),g=AC.createGain(),v=AC.createOscillator(),vg=AC.createGain();
+  const o=AC.createOscillator(),gn=AC.createGain(),v=AC.createOscillator(),vg=AC.createGain();
   o.type='sine'; o.frequency.value=f;
-  v.frequency.value=5.2; vg.gain.value=f*.006; v.connect(vg); vg.connect(o.frequency);
-  o.connect(g); g.connect(AC.destination);
-  g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(vol,t+dur*.25); g.gain.setValueAtTime(vol,t+dur*.7); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  v.frequency.value=4.6+Math.random(); vg.gain.value=f*.007; v.connect(vg); vg.connect(o.frequency);
+  o.connect(gn); gn.connect(mg());
+  gn.gain.setValueAtTime(.0001,t); gn.gain.linearRampToValueAtTime(vol,t+dur*.25); gn.gain.setValueAtTime(vol,t+dur*.7); gn.gain.exponentialRampToValueAtTime(.0001,t+dur);
   o.start(t); o.stop(t+dur+.05); v.start(t); v.stop(t+dur+.05);
 }
 function drone(f,t,dur,vol){
-  const o=AC.createOscillator(),g=AC.createGain(),lp=AC.createBiquadFilter();
+  const o=AC.createOscillator(),gn=AC.createGain(),lp=AC.createBiquadFilter();
   o.type='sawtooth'; o.frequency.value=f; lp.type='lowpass'; lp.frequency.value=300;
-  o.connect(lp); lp.connect(g); g.connect(AC.destination);
-  g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(vol,t+dur*.3); g.gain.linearRampToValueAtTime(.0001,t+dur);
+  o.connect(lp); lp.connect(gn); gn.connect(mg());
+  gn.gain.setValueAtTime(.0001,t); gn.gain.linearRampToValueAtTime(vol,t+dur*.3); gn.gain.linearRampToValueAtTime(.0001,t+dur);
   o.start(t); o.stop(t+dur+.1);
+}
+function harp(f,t,vol){
+  const o=AC.createOscillator(),gn=AC.createGain();
+  o.type='sine'; o.frequency.value=f*2;
+  o.connect(gn); gn.connect(mg());
+  gn.gain.setValueAtTime(.0001,t); gn.gain.exponentialRampToValueAtTime(vol,t+.008); gn.gain.exponentialRampToValueAtTime(.0001,t+.5);
+  o.start(t); o.stop(t+.55);
 }
 function tamb(t,vol){
   const b=AC.createBuffer(1,2205,44100), d=b.getChannelData(0);
   for(let i=0;i<2205;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/2205,2);
-  const src=AC.createBufferSource(), hp=AC.createBiquadFilter(), g=AC.createGain();
+  const src=AC.createBufferSource(), hp=AC.createBiquadFilter(), gn=AC.createGain();
   src.buffer=b; hp.type='highpass'; hp.frequency.value=5000;
-  src.connect(hp); hp.connect(g); g.connect(AC.destination);
-  g.gain.value=vol; src.start(t);
+  src.connect(hp); hp.connect(gn); gn.connect(mg());
+  gn.gain.value=vol; src.start(t);
 }
 function thump(t,vol){
-  const o=AC.createOscillator(),g=AC.createGain();
+  const o=AC.createOscillator(),gn=AC.createGain();
   o.type='sine'; o.frequency.setValueAtTime(110,t); o.frequency.exponentialRampToValueAtTime(55,t+.12);
-  o.connect(g); g.connect(AC.destination);
-  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+.18);
+  o.connect(gn); gn.connect(mg());
+  gn.gain.setValueAtTime(vol,t); gn.gain.exponentialRampToValueAtTime(.0001,t+.18);
   o.start(t); o.stop(t+.2);
 }
-const MELODY_BANK=[[7,9,10,9,7,5,4,5],[4,5,7,5,4,2,0,2],[7,10,9,7,9,10,11,9],[0,2,4,5,4,2,4,2],[10,9,7,9,5,4,5,7],[7,5,4,2,0,2,4,5]];
+/* cuatro secciones con carácter propio (8 compases cada una) */
+const SECTIONS=[
+ {name:'paseo', prog:[[0,2,4],[-1,2,4],[3,5,7],[0,2,4]], droneDeg:0, perc:1, harp:false, fluteOct:0, rest:.3,
+  mel:[[7,9,10,9,7,5,4,5],[4,5,7,5,4,2,0,2],[7,10,9,7,9,10,11,9],[0,2,4,5,4,2,4,2],[10,9,7,9,5,4,5,7],[7,5,4,2,0,2,4,5]]},
+ {name:'ágora', prog:[[3,5,7],[4,6,8],[0,2,4],[-1,2,4]], droneDeg:3, perc:1.4, harp:true, fluteOct:0, rest:.15,
+  mel:[[7,8,9,11,9,8,7,5],[11,9,8,9,7,5,7,9],[5,7,8,7,5,4,5,7],[9,11,12,11,9,8,9,11]]},
+ {name:'templo', prog:[[5,7,9],[4,6,8],[0,2,4],[0,2,4]], droneDeg:5, perc:.4, harp:false, fluteOct:-1, rest:.45,
+  mel:[[4,5,7,9,7,5,4,2],[2,4,5,4,2,0,2,4],[9,7,5,7,4,2,4,5]]},
+ {name:'danza', prog:[[0,2,4],[3,5,7],[-1,2,4],[3,5,7]], droneDeg:0, perc:2, harp:true, fluteOct:1, rest:.1,
+  mel:[[7,7,9,10,9,7,10,9],[4,4,5,7,5,4,7,5],[10,10,11,12,11,10,9,7],[7,9,7,5,7,9,10,11]]}
+];
+function pickSection(){ let nx; do{ nx=Math.random()<.4?0:1+Math.floor(Math.random()*3); }while(nx===MUSIC.sec&&Math.random()<.7); return nx; }
 function schedBar(t){
-  const BPB=2.6; /* segundos por compás (~92bpm, 4 golpes) */
-  const ch=CHORDS[MUSIC.bar%4];
-  drone(mNote(0)/2, t, BPB*1.05, .028);
+  const BPB=2.5;
+  const sec=SECTIONS[MUSIC.sec], ch=sec.prog[MUSIC.secBar%4];
+  drone(mNote(sec.droneDeg)/2, t, BPB*1.06, .03);
   for(let s2=0;s2<4;s2++){
-    const st=t+s2*BPB/4;
+    const st=t+s2*BPB/4+hum();
     const deg=ch[s2%ch.length];
-    pluck(mNote(deg), st, .5, .05);
-    if(s2===2) pluck(mNote(deg+7)/1, st+BPB/8, .35, .035);
-    if(s2===0) thump(st,.12);
-    if(s2===2) tamb(st,.05);
+    pluck(mNote(deg), st, .5, hv(.05));
+    if(s2===2&&Math.random()<.8) pluck(mNote(deg+7), st+BPB/8+hum(), .32, hv(.032));
+    if(sec.harp&&s2%2===0){ for(let k=0;k<3;k++) harp(mNote(ch[k%ch.length]), st+k*BPB/16, hv(.022)); }
+    if(s2===0) thump(st, .12*sec.perc);
+    if(s2===2) tamb(st, .05*sec.perc);
+    if(sec.perc>=1.4&&(s2===1||s2===3)) tamb(st+BPB/8, .028*sec.perc);
   }
-  if(MUSIC.bar%2===1){
-    const mel=MELODY_BANK[Math.floor(Math.random()*MELODY_BANK.length)];
-    for(let i=0;i<4;i++){ flute(mNote(mel[(MUSIC.bar+i)%8]), t+i*BPB/4+BPB/8, BPB/4*.9, .04); }
+  if(MUSIC.secBar%2===1&&Math.random()>sec.rest){
+    const mel=sec.mel[Math.floor(Math.random()*sec.mel.length)];
+    const off=sec.fluteOct*7;
+    for(let i=0;i<4;i++){
+      const nd=mel[(MUSIC.secBar*2+i)%mel.length]+off;
+      if(Math.random()<.15) flute(mNote(nd+1), t+i*BPB/4+BPB/8-0.06, .07, .022); /* adorno */
+      flute(mNote(nd), t+i*BPB/4+BPB/8+hum(), BPB/4*.9, hv(.04));
+    }
   }
-  MUSIC.bar++;
+  MUSIC.bar++; MUSIC.secBar++;
+  if(MUSIC.secBar>=8){ MUSIC.secBar=0; MUSIC.sec=pickSection(); drone(mNote(SECTIONS[MUSIC.sec].droneDeg)/2, t+BPB, BPB*.9, .02); }
   return BPB;
 }
 function musicTick(){
   if(!MUSIC.playing||!AC) return;
-  try{ while(MUSIC.next<AC.currentTime+1.2){ MUSIC.next+=schedBar(Math.max(MUSIC.next,AC.currentTime+.05)); } }catch(e){}
+  try{ while(MUSIC.next<AC.currentTime+0.7){ MUSIC.next+=schedBar(Math.max(MUSIC.next,AC.currentTime+.05)); } }catch(e){}
 }
 function startMusic(){
   if(!musicPref()||MUSIC.playing) return;
   try{
-    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    mg();
     if(AC.state==='suspended') AC.resume();
-    MUSIC.playing=true; MUSIC.next=AC.currentTime+.1; MUSIC.bar=0;
-    MUSIC.timer=setInterval(musicTick,300); musicTick();
+    MUSIC.playing=true; MUSIC.next=AC.currentTime+.1;
+    const gn=MGAIN.gain; gn.cancelScheduledValues(AC.currentTime); gn.setValueAtTime(Math.max(gn.value,0.0001),AC.currentTime); gn.linearRampToValueAtTime(.9,AC.currentTime+.6);
+    if(MUSIC.timer) clearInterval(MUSIC.timer);
+    MUSIC.timer=setInterval(musicTick,250); musicTick();
   }catch(e){}
 }
-function stopMusic(){ MUSIC.playing=false; if(MUSIC.timer){clearInterval(MUSIC.timer); MUSIC.timer=null;} }
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopMusic(); else if(musicPref()&&MUSIC.started) startMusic(); });
+function stopMusic(){
+  MUSIC.playing=false;
+  if(MUSIC.timer){clearInterval(MUSIC.timer); MUSIC.timer=null;}
+  try{ if(MGAIN&&AC){ const gn=MGAIN.gain; gn.cancelScheduledValues(AC.currentTime); gn.setValueAtTime(gn.value,AC.currentTime); gn.linearRampToValueAtTime(.0001,AC.currentTime+.12); } }catch(e){}
+}
+['visibilitychange'].forEach(ev=>document.addEventListener(ev,()=>{ if(document.hidden) stopMusic(); else if(musicPref()&&MUSIC.started) startMusic(); }));
+['pagehide','freeze','blur'].forEach(ev=>window.addEventListener(ev,()=>{ if(ev!=='blur'||document.hidden) stopMusic(); }));
 (function(){
   const btn=document.getElementById('musicbtn');
   if(btn){ btn.classList.toggle('off',!musicPref());
-    btn.onclick=()=>{ MUSIC.started=true; setMusic(!musicPref()); toast(musicPref()?'🎵 Música: laúdes del Ágora':'🎵 Música silenciada'); }; }
+    btn.onclick=()=>{ MUSIC.started=true; setMusic(!musicPref()); toast(musicPref()?'🎵 Música: los laúdes del Ágora':'🎵 Música silenciada'); }; }
   const kick=()=>{ MUSIC.started=true; if(musicPref()) startMusic(); document.removeEventListener('pointerdown',kick); };
   document.addEventListener('pointerdown',kick);
 })();
@@ -2951,6 +3041,177 @@ setTimeout(()=>{ try{
     toast('💾 Consejo: sin sincronización activa, guarda un código de progreso en ⚙ de vez en cuando');
   }
 }catch(e){} }, 4000);
+
+/* ---------- reanudación universal: Test y Obrador ---------- */
+(function(){
+  try{
+    if(S.tq&&S.tq.curid){
+      const qd=S.tq;
+      const queue=qd.queue.map(id=>findQ(id)).filter(Boolean);
+      const cur=findQ(qd.curid);
+      if(queue.length&&cur){
+        if(qd.scope&&qd.scope.length){ S.prefs.testScope=qd.scope; }
+        TQ={mode:qd.mode,queue,idx:Math.min(qd.idx,queue.length-1),ok:qd.ok,ko:qd.ko,n:qd.n,
+            fallos:(qd.fallos||[]).map(id=>findQ(id)).filter(Boolean),answered:false,cur,perm:null};
+        setTimeout(()=>toast('🏹 Test en curso recuperado ('+qd.ok+'✓ '+qd.ko+'✗) — en 📚 Test'),1600);
+      } else delete S.tq;
+    }
+  }catch(e){}
+})();
+const _startBuilder_v16=startBuilder;
+startBuilder=function(sid,q){ try{ S.bd={sid,qid:q.id}; save(); }catch(e){} _startBuilder_v16(sid,q); };
+const _bdCheckOrder_v16=bdCheckOrder;
+bdCheckOrder=function(){ try{ delete S.bd; save(); }catch(e){} _bdCheckOrder_v16(); };
+function resumeObra(){
+  try{ const b=S.bd; if(!b) return;
+    const q=subj(b.sid).preguntas.find(p=>p.id===b.qid);
+    if(q){ show('city'); setTimeout(()=>{ openObrador(); startBuilder(b.sid,q); },60); }
+  }catch(e){}
+}
+const _renderCity_v16=renderCity;
+renderCity=function(){
+  _renderCity_v16();
+  try{ if(S.bd&&!BD){ const q=subj(S.bd.sid).preguntas.find(p=>p.id===S.bd.qid);
+    if(q) $('#cityzone').insertAdjacentHTML('afterbegin',`<button class="tcard card-ui" style="--c:${col(S.bd.sid)}; width:100%; margin-top:14px" onclick="resumeObra()"><div class="nm">🧱 Obra interrumpida: retomar</div><div class="st">${esc(q.enunciado.slice(0,80))}…</div></button>`);
+  } }catch(e){}
+};
+
+/* ================= v18 — MOMENTOS DE GLORIA ================= */
+/* subida de nivel a pantalla completa */
+(function(){
+  const _g=gainXP;
+  gainXP=function(n,quiet){
+    const before=levelOf(S.xp);
+    _g(n,quiet);
+    const after=levelOf(S.xp);
+    if(after>before){
+      try{
+        $('#lvlupname').textContent='NIVEL '+(after+1);
+        $('#lvluptit').textContent=LEVELS[after][1]+' · '+S.xp+' XP';
+        const el=$('#lvlup'); el.classList.add('on'); snd('win'); vib([20,60,20]);
+        setTimeout(()=>el.classList.remove('on'),2200);
+      }catch(e){}
+    }
+  };
+})();
+/* contador diario de aciertos (para Día Redondo) */
+(function(){ const _a=addSXP; addSXP=function(sid,amt,good){ _a(sid,amt,good); try{ if(good===true){ if(S.today.day!==today()) S.today={day:today(),xp:S.today.xp||0}; S.today.ok=(S.today.ok||0)+1; checkDiaRedondo(); } }catch(e){} }; })();
+function checkDiaRedondo(){
+  try{
+    const v=v10S();
+    if(v.redondo===today()) return;
+    const expedOk=S.exped&&S.exped.last===today();
+    const misOk=S.q&&S.q.day===today()&&S.q.picks.some(p=>p.claimed);
+    const okOk=(S.today.ok||0)>=10;
+    if(expedOk&&misOk&&okOk){
+      v.redondo=today(); v.diasRedondos=(v.diasRedondos||0)+1; save();
+      toast('🏛️ DÍA REDONDO, CÉSAR — expedición, misión y 10 aciertos. Lo de hoy ya está ganado.');
+      snd('win'); vib([15,40,15,40,15]);
+    }
+  }catch(e){}
+}
+/* primera victoria del día + combate impecable (en endBattle) */
+(function(){
+  const _e=endBattle;
+  endBattle=function(win){
+    const fails=B?B.fails:1, asked=B?B.asked:0;
+    _e(win);
+    try{
+      if(!win) return;
+      const v=v10S();
+      if(v.fvDay!==today()){ v.fvDay=today(); heroS().dracmas+=5; resS().marmol+=5; setTimeout(()=>toast('🌞 Primera victoria del día: +5 🪙 +5 🪨'),700); }
+      if(fails===0&&asked>=5){ v.perfectos=(v.perfectos||0)+1; heroS().dracmas+=3; setTimeout(()=>toast('✨ Combate impecable: ni un fallo · +3 🪙 ('+v.perfectos+' impecables)'),1300); }
+      save(); checkDiaRedondo();
+    }catch(e){}
+  };
+})();
+/* ---------- RETO DEL ORÁCULO (semanal, mismas 12 preguntas toda la semana) ---------- */
+function oraculoPool(){
+  const rng=seedRng(weekKey()+'oraculo');
+  let all=[]; DATA.forEach(s=>all=all.concat(TESTS[s.id]));
+  const picks=[]; const used=new Set();
+  while(picks.length<12&&used.size<all.length){ const i=Math.floor(rng()*all.length); if(used.has(i))continue; used.add(i); picks.push(all[i]); }
+  return picks;
+}
+function oraS(){ const v=v10S(); if(!v.ora||v.ora.wk!==weekKey()) v.ora={wk:weekKey(),best:-1,cleared:false}; return v.ora; }
+function startOraculo(){
+  const picks=oraculoPool();
+  B={sid:'torre',node:-3,type:'oraculo',alive:true,enemy:{name:'El Eco del Oráculo',spr:'eye'},ehp:12,ehpMax:12,php:4,phpMax:4,streak:0,correct:0,fails:0,xpGot:0,seen:[],requeue:[],reqHist:{},asked:0,pool:picks.map(m=>({m,w:1})),fixedQueue:picks.slice(),q:null,answered:false,shield:false,freeOwl:0,usedOwl:false,t0:0,advance:false};
+  nextBQ(); show('camp');
+}
+/* el reto usa cola fija, no aleatoria */
+(function(){
+  const _n=nextBQ;
+  nextBQ=function(){
+    if(B&&B.alive&&B.type==='oraculo'){
+      if(B.asked>=12||B.ehp<=0){ return endBattle(B.ehp<=0); }
+      B.q=B.fixedQueue[B.asked];
+      B.answered=false; B.usedOwl=false; B.perm=[0,1,2].sort(()=>Math.random()-.5); B.t0=Date.now(); B.asked++;
+      saveBattle(); renderBattle(); return;
+    }
+    _n();
+  };
+  const _e2=endBattle;
+  endBattle=function(win){
+    if(B&&B.type==='oraculo'){
+      const o=oraS(), score=B.correct;
+      const newBest=score>o.best;
+      if(newBest) o.best=score;
+      if(score>=12&&!S.feats.includes('f26')){ S.feats.push('f26'); heroS().dracmas+=40; toast('🏅 Hazaña: Voz del Oráculo · +40 🪙'); }
+      win = score>=9;
+      if(!o.cleared&&win){ o.cleared=true; heroS().dracmas+=15; resS().marmol+=10; setTimeout(()=>toast('🔮 Primer eco superado esta semana: +15 🪙 +10 🪨'),800); }
+      save();
+      B.alive=false; delete S.battle; save();
+      const c=colG('torre');
+      $('#campzone').innerHTML=`<div class="endwrap card-ui" style="--c:${c}">
+        ${win?'<div class="rays"></div>':''}
+        <div class="lau" style="font-size:3rem">🔮</div>
+        <div class="big">${score}/12</div>
+        <div class="sub">${score>=12?'El Oráculo guarda silencio: no tiene nada que corregirte.':newBest?'Nueva mejor marca de la semana.':'Mejor marca de la semana: '+o.best+'/12. Las mismas 12 preguntas te esperan hasta el lunes.'}</div>
+        <div class="stats"><span>✓ ${score}</span><span>✗ ${B.fails}</span><span>+${B.xpGot} XP</span></div>
+        <div class="mrowb" style="justify-content:center; display:flex; gap:10px; margin-top:18px">
+          <button class="btn primary" onclick="startOraculo()">Reintentar</button>
+          <button class="btn" onclick="B=null;renderCamp()">Campaña</button>
+        </div></div>`;
+      snd(win?'win':'lose');
+      return;
+    }
+    _e2(win);
+  };
+})();
+/* tarjeta del reto en la Campaña */
+(function(){
+  const _rc=renderCamp;
+  renderCamp=function(){
+    _rc();
+    try{
+      if(B&&B.alive) return;
+      const o=oraS(), c=isDark()?'#9085e9':'#4a3aa7';
+      const after=document.querySelector('#campzone .terr');
+      if(after) after.insertAdjacentHTML('beforebegin',
+        `<button class="tcard card-ui" style="--c:${c}; width:100%; margin:0 0 10px" onclick="startOraculo()">
+          <div class="nm">🔮 Reto del Oráculo · semanal</div>
+          <div class="st">Las mismas 12 preguntas toda la semana, para TODOS. ${o.best>=0?'Tu mejor marca: <b>'+o.best+'/12</b>'+(o.best>=12?' · 🏆 pleno':'')+'. Siempre puedes superarte.':'Aún no lo has intentado esta semana.'}</div>
+        </button>`);
+    }catch(e){}
+  };
+})();
+/* hazaña del pleno + resume del oráculo */
+FEATS.push({id:'f26',ic:'🔮',n:'Voz del Oráculo',d:'Pleno 12/12 en el Reto semanal',p:40,c:()=>S.feats.includes('f26')});
+(function(){
+  const _rb=resumeBattle;
+  resumeBattle=function(){
+    const sv=S.battle;
+    if(sv&&sv.type==='oraculo'){
+      try{
+        const picks=oraculoPool();
+        B={sid:'torre',node:-3,type:'oraculo',alive:true,enemy:sv.enemy,ehp:sv.ehp,ehpMax:12,php:sv.php,phpMax:sv.phpMax,streak:sv.streak,correct:sv.correct,fails:sv.fails,xpGot:sv.xpGot,asked:Math.max(0,sv.asked-1),seen:[],requeue:[],reqHist:{},shield:sv.shield,freeOwl:0,usedOwl:false,q:null,answered:false,t0:0,advance:false,pool:picks.map(m=>({m,w:1})),fixedQueue:picks};
+        nextBQ(); return true;
+      }catch(e){ delete S.battle; return false; }
+    }
+    return _rb();
+  };
+})();
 
 </script>
 </body>
