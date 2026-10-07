@@ -1849,7 +1849,7 @@ function openCfg(){
   <p class="small" style="margin-top:12px"><b>📅 Fecha del examen</b> (para la cuenta atrás de la Crónica):</p>
   <input type="date" id="examdate" value="${(S.v10&&S.v10.exam)||'2027-02-01'}" style="padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--ink)" onchange="try{S.v10.exam=this.value;save();toast('Fecha guardada');}catch(e){}">
   <div class="mrowb"><button class="btn" onclick="closeCfg()">Cerrar</button></div>
-  <p class="small mut" style="margin-top:10px; text-align:center">César el filósofo · versión 2.0 (v30) · guías 2026/27 comprobadas · hecho con Fable</p>`;
+  <p class="small mut" style="margin-top:10px; text-align:center">César el filósofo · versión 2.1 (v31) · Polis rediseñada · guías 2026/27 comprobadas · hecho con Fable</p>`;
   $('#modalbg').classList.add('on');
 }
 function encState(){ return 'CF1.'+btoa(unescape(encodeURIComponent(JSON.stringify(S)))); }
@@ -2488,9 +2488,9 @@ function renderCity(){
     <span class="hstat">🛠 <b>${r.obras}</b> obras</span>
     <span style="flex:1"></span>
     <button class="btn primary" onclick="openObrador()">🧱 Obrador — armar respuestas</button>
-    ${cityS().built.includes('agora')?`<button class="btn" onclick="openMarket()">🪙 Mercado</button>`:''}
+    <button class="btn" onclick="openMarket()">🪙 Mercado</button>
   </div>
-  <p class="small mut" style="margin:6px 0 10px">El <b>mármol</b> sale de las victorias de la Campaña. Las <b>obras</b> salen del Obrador: armar respuestas de examen reales, ladrillo a ladrillo. Con ambos, construyes.</p>
+  <p class="small mut" style="margin:6px 0 10px"><b>Construir</b> solo cuesta <b>🪨 mármol</b> (victorias de la Campaña). <b>Mejorar</b> a ★★ y ★★★ pide además <b>🛠 obras</b> del Obrador: respuestas de examen armadas ladrillo a ladrillo.</p>
   <div class="cityscene" style="position:relative" id="cityscene">
   <svg viewBox="0 0 420 260">
     <g class="stars" fill="#e8e3c9">${Array.from({length:26},(_,i)=>`<circle cx="${(i*73)%420}" cy="${8+(i*37)%92}" r="${i%3===0?1.5:0.9}" opacity="${0.4+(i%5)*0.12}"/>`).join('')}</g>
@@ -2514,15 +2514,16 @@ function renderCity(){
     const nxt=max?null:bldCost(b,lv+1);
     const can=nxt&&r.marmol>=nxt.m&&r.obras>=nxt.o;
     const stars='★'.repeat(lv)+'☆'.repeat(3-lv);
-    return `<div class="cl ${on?'unlocked':can?'':'lock'}"><span class="ic">${on?b.ic:can?'🏗️':'🔒'}</span><div style="flex:1"><b>${b.n} <span class="bldlv">${stars}</span></b><span class="req">${max?esc(b.d)+' · NIVEL MÁXIMO':(on?esc(b.d)+' · ':'')+`mejorar: 🪨${nxt.m} + 🛠${nxt.o}`}</span>${can?`<div class="btnrow"><button class="btn" style="padding:5px 12px; font-size:.78rem" onclick="buildCity('${b.k}')">${on?'Mejorar ▲':'Construir'}</button></div>`:''}</div></div>`;
+    const costTxt=nxt?`${on?'mejorar':'construir'}: 🪨${nxt.m}${nxt.o?` + 🛠${nxt.o}`:''}`:'';
+    return `<div class="cl ${on?'unlocked':can?'':'lock'}"><span class="ic">${on?b.ic:can?'🏗️':'🔒'}</span><div style="flex:1"><b>${b.n} <span class="bldlv">${stars}</span></b><span class="req">${max?esc(b.d)+' · NIVEL MÁXIMO':(on?esc(b.d)+' · ':'')+costTxt}</span>${can?`<div class="btnrow"><button class="btn" style="padding:5px 12px; font-size:.78rem" onclick="buildCity('${b.k}')">${on?'Mejorar ▲':'Construir'}</button></div>`:''}</div></div>`;
   }).join('')}</div>
   ${habs.length?`<p class="small mut" style="margin-top:10px">Toca a un habitante para oír su consejo.</p>`:''}
   <div id="bdzone" style="margin-top:14px"></div>`;
 }
 function bldLv(k){ const c=cityS(); if(!c.lv) c.lv={}; if(!c.lv[k]&&c.built.includes(k)) c.lv[k]=1; return c.lv[k]||0; }
-function bldCost(b,lv){ /* coste del nivel lv (1..3) */
-  const mm=[1,2.5,5][lv-1], mo=[1,1.5,2.5][lv-1];
-  return {m:Math.round(b.m*mm), o:Math.max(1,Math.round(b.o*mo))};
+function bldCost(b,lv){ /* coste del nivel lv (1..3) — v31: CONSTRUIR solo cuesta mármol; MEJORAR pide obras del Obrador */
+  const mm=[1,2.5,5][lv-1], mo=[0,1.5,2.5][lv-1];
+  return {m:Math.round(b.m*mm), o:lv===1?0:Math.max(1,Math.round(b.o*mo))};
 }
 function buildCity(k){
   const b=BUILDINGS.find(x=>x.k===k), r=resS(), city=cityS();
@@ -2530,7 +2531,9 @@ function buildCity(k){
   const lv=bldLv(k);
   if(lv>=3) return;
   const cost=bldCost(b,lv+1);
-  if(r.marmol<cost.m||r.obras<cost.o){ toast('Te falta material: 🪨'+cost.m+' + 🛠'+cost.o+(r.obras<cost.o?' — las 🛠 se ganan en el Obrador':' — el 🪨 sale de la Campaña')); return; }
+  if(r.marmol<cost.m||r.obras<cost.o){
+    const falta=[]; if(r.marmol<cost.m) falta.push('🪨'+cost.m+' (gana combates en la Campaña)'); if(r.obras<cost.o) falta.push('🛠'+cost.o+' (arma respuestas en el Obrador)');
+    toast('Te falta: '+falta.join(' y ')); return; }
   r.marmol-=cost.m; r.obras-=cost.o;
   if(!city.lv) city.lv={};
   city.lv[k]=lv+1;
@@ -2540,7 +2543,7 @@ function buildCity(k){
   checkLore(); checkFeats();
   renderCity();
 }
-function cityInfo(k){ const b=BUILDINGS.find(x=>x.k===k); if(!b) return; const on=cityS().built.includes(k); toast(on? b.ic+' '+b.n+' — '+b.d : '🔒 '+b.n+' — coste: 🪨'+b.m+' + 🛠'+b.o); }
+function cityInfo(k){ const b=BUILDINGS.find(x=>x.k===k); if(!b) return; const on=cityS().built.includes(k); toast(on? b.ic+' '+b.n+' — '+b.d : '🔒 '+b.n+' — construir: 🪨'+b.m); }
 function habQuote(sid){
   const [n,q]=HABITANTES[sid], sc=$('#cityscene');
   const old=sc.querySelector('.citybubble'); if(old) old.remove();
@@ -2556,7 +2559,7 @@ function openObrador(){
   const z=$('#bdzone');
   z.innerHTML=`<div class="q card-ui">
     <div class="bsteps">🧱 Obrador — elige asignatura</div>
-    <p class="small mut" style="margin:4px 0 10px">Te doy una pregunta REAL de examen de desarrollo: eliges qué ladrillos forman su respuesta (colándote intrusos) y luego los ordenas. <b>Elegir bien ya asegura la obra digna (🛠)</b>; el orden perfecto la asciende a maestra (🛠×2). Así se aprende QUÉ va en cada pregunta.</p>
+    <p class="small mut" style="margin:4px 0 10px">Te doy una pregunta REAL de examen de desarrollo: eliges qué ladrillos forman su respuesta (colándote intrusos) y luego los ordenas. <b>Elegir bien ya asegura la obra digna (🛠)</b>; el orden perfecto la asciende a maestra (🛠×2). Las 🛠 sirven para <b>mejorar los edificios de tu Polis a ★★ y ★★★</b> — y de paso aprendes QUÉ va en cada pregunta.</p>
     <div class="scopebar" style="margin:0">${DATA.map(s=>`<button class="chip" style="--c:${col(s.id)}" onclick="openBuilder('${s.id}')"><span class="dot"></span>${esc(s.nombreCorto)}</button>`).join('')}</div>
   </div>`;
   z.scrollIntoView({behavior:'smooth'});
@@ -2611,6 +2614,7 @@ function renderBuilder(){
 }
 function bdToggle(i){ if(!BD||BD.phase!==1)return; if(BD.sel.has(i)) BD.sel.delete(i); else BD.sel.add(i); renderBuilder(); }
 function bdCheck(){
+  if(!BD||BD.phase!==1||!BD.q) return;
   const q=BD.q, c=col(BD.sid);
   let tp=0,fp=0,miss=0;
   const rows=BD.items.map((it,i)=>{
@@ -2643,6 +2647,8 @@ function bdOrd(i){
   renderBuilder();
 }
 function bdCheckOrder(){
+  if(!BD||BD.phase!==2||!BD.q||!BD.orderItems) return;
+  BD.phase=3; /* anti doble-toque: la obra se paga una sola vez */
   const q=BD.q, c=col(BD.sid);
   let okPos=0;
   BD.order.forEach((itemIdx,pos)=>{ if(BD.orderItems[itemIdx].ord===pos) okPos++; });
