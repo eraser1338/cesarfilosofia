@@ -1481,6 +1481,28 @@ body[data-screen="test"][data-tq]:not([data-tq=""]) #tscopebar{ display:none }
 .cl .ic, .market .itrow .ic2{ filter:grayscale(1) sepia(1) saturate(2.3) hue-rotate(-14deg) brightness(.78) contrast(1.2) }
 [data-theme="dark"] .cl .ic, [data-theme="dark"] .market .itrow .ic2{ filter:grayscale(1) sepia(1) saturate(2.6) hue-rotate(-14deg) brightness(1.08) }
 
+/* ═══════════ v33 · Viajes de los héroes ═══════════ */
+.vjsec{ padding:14px 14px 10px; margin:0 0 14px }
+.vjhead{ display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin-bottom:8px }
+.vjt{ font-family:var(--display); font-weight:700; font-size:1.02rem; color:var(--ink) }
+.vjrows{ display:flex; flex-direction:column; gap:8px }
+.vjhero .ic2 svg, .vjdest .ic2 svg{ width:26px; height:26px; color:var(--fig) }
+.vjhero.home{ border-style:dashed; box-shadow:none; background:transparent }
+.vjhero.back{ border-color:var(--good); box-shadow:0 2px 0 var(--good) }
+.vjhero .btn{ flex:none }
+.vjbar{ height:6px; border-radius:4px; background:color-mix(in srgb,var(--fig) 14%, transparent); margin-top:5px; overflow:hidden }
+.vjbar i{ display:block; height:100%; background:var(--fig); border-radius:4px }
+[data-theme="dark"] .vjbar i{ background:var(--clay) }
+.vjmhead{ display:flex; gap:12px; align-items:flex-start; margin-bottom:8px }
+.vjmhead h3{ margin:2px 0 4px }
+.vjbig svg{ width:54px; height:54px; color:var(--fig) }
+.ovart.vjbig svg{ width:72px; height:72px }
+.vjfl{ font-family:var(--serif); font-style:italic; margin:6px 4px 8px; color:var(--ink2) }
+/* destinos: en móvil estrecho el botón baja bajo el texto */
+@media(max-width:400px){ .vjdest{ flex-wrap:wrap } .vjdest .vjdtx{ flex:1 1 calc(100% - 52px) } .vjdest .btn{ margin-left:auto } }
+.rolebtn.away{ border-style:dashed; opacity:.85 }
+.vjdtx{ flex:1; min-width:0 }
+
 </style>
 <body>
 <canvas id="motes" aria-hidden="true"></canvas>
@@ -2298,7 +2320,7 @@ function openCfg(){
   <p class="small" style="margin-top:12px"><label for="examdate"><b>📅 Fecha del examen</b> (para la cuenta atrás de la Crónica):</label></p>
   <input type="date" id="examdate" value="${esc((S.v10&&S.v10.exam)||'2027-02-01')}" style="padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface2); color:var(--ink)" onchange="try{ if(/^\\d{4}-\\d{2}-\\d{2}$/.test(this.value)){ S.v10.exam=this.value;save();toast('Fecha guardada'); } }catch(e){}">
   <div class="mrowb"><button class="btn" onclick="closeCfg()">Cerrar</button></div>
-  <p class="small mut" style="margin-top:10px; text-align:center">César el filósofo III · v32 «Figuras Negras» · Olivar de la Academia · guías 2026/27 comprobadas · hecho con Fable</p>`;
+  <p class="small mut" style="margin-top:10px; text-align:center">César el filósofo III · v33 «Figuras Negras» · Olivar y Viajes · guías 2026/27 comprobadas · hecho con Fable</p>`;
   $('#modalbg').classList.add('on');
 }
 function encState(){ return 'CF1.'+btoa(unescape(encodeURIComponent(JSON.stringify(S)))); }
@@ -3258,9 +3280,9 @@ async function syncPull(silent){
     let txt=f.content; if(f.truncated){ txt=await (await fetch(f.raw_url)).text(); }
     const remote=JSON.parse(txt);
     if((remote.savedAt||0)>(S.savedAt||0)){
-      const keepO=S.oliv, keepL=S.lechuza;
+      const keepO=S.oliv, keepL=S.lechuza, keepV=S.viaj;
       S=Object.assign(freshState(),remote); try{ sanitizeState(); migrateDates(); }catch(e){}
-      if(!S.oliv&&keepO) S.oliv=keepO; if(!S.lechuza&&keepL) S.lechuza=keepL;
+      if(!S.oliv&&keepO) S.oliv=keepO; if(!S.lechuza&&keepL) S.lechuza=keepL; if(!S.viaj&&keepV) S.viaj=keepV;
       try{ if(typeof OV!=='undefined') OV=null; if(document.getElementById('ovopts')&&typeof olivOpen==='function'){ if(S.oliv&&S.oliv.cur) olivOpen(); else closeCfg(); } }catch(e){}
       save();
       SY.lastPull=Date.now();
@@ -4930,7 +4952,7 @@ function olivRefresh(){
     if(s){ if(s.dataset.sig!==sig){ const open=s.querySelector('details.ovhow')&&s.querySelector('details.ovhow').open; const t=document.createElement('div'); t.innerHTML=olivSectionHTML(); const el=t.firstElementChild; el.dataset.sig=sig; if(open) el.querySelector('details.ovhow').open=true; s.replaceWith(el); }
       else{ const a=s.querySelector('.ovw-t'), b=s.querySelector('.ovw-s'), p=s.querySelector('.ovsec-ring span'), wt=s.querySelector('.ovwait');
         if(a) a.textContent=st.txt; if(b) b.textContent=st.sub; if(p) p.textContent=Math.round(st.f*100)+'\u202f%'; if(wt) wt.textContent='⏳ '+fmtDur((OLIV.MIN-st.f)*olivS().rhythm*3.6e6); olivRingSet(s,st.f); } }
-    const tab=document.querySelector('.tab[data-s="city"]'); if(tab) tab.classList.toggle('ovready', st.k==='full'||st.k==='cur');
+    const tab=document.querySelector('.tab[data-s="city"]'); if(tab) tab.classList.toggle('ovready', st.k==='full'||st.k==='cur'||(typeof viajReady==='function'&&viajReady()));
   }catch(e){}
 }
 function olivRingSet(root,f){ const v=root.querySelector('.ovring .val'); if(!v) return; const C=2*Math.PI*26; v.setAttribute('stroke-dashoffset',(C*(1-Math.max(0,Math.min(1,f)))).toFixed(1)); }
@@ -4966,6 +4988,218 @@ try{ if(typeof cur!=='undefined'){ if(cur==='inicio') renderInicio(); else if(cu
 <script>
 'use strict';
 /* ════════════════════════════════════════════════════════════════════
+   v33 — VIAJES DE LOS HÉROES  (segundo modo idle)
+   Los héroes que no llevas activos (de tus tres: guerrero, mago, arquero)
+   pueden salir de viaje con un salvoconducto y vuelven solos, con el móvil
+   apagado, trayendo botín y experiencia de su oficio.
+   · Salvoconductos 🎫: 1 al completar las 3 misiones del día, 1 cada 3
+     cosechas del olivar (máx. 5). Se estudia para poder viajar.
+   · Destinos: Pireo 4 h (dracmas) · Pentélico 8 h (mármol) · Delfos 24 h
+     (de todo y rarezas). Más largo = más botín y más hallazgos.
+   · El botín se decide al partir (recargar no lo cambia) y se recoge con
+     un toque al volver. El viajero sube de nivel su oficio.
+   ════════════════════════════════════════════════════════════════════ */
+const VIAJ={ TK_MAX:5, TK_START:2, OLIV_PER_TK:3 };
+const VIAJ_DEST=[
+ {k:'pireo',     n:'El Pireo', en:'en el Pireo', a:'al Pireo', de:'del Pireo',               h:4,  ic:'coin',   sub:'el puerto de Atenas · sobre todo dracmas', d:[6,8],   m:[1,3],  rx:15, item:.10, eq:0},
+ {k:'pentelico', n:'Canteras del Pentélico', en:'en las canteras del Pentélico', a:'a las canteras del Pentélico', de:'de las canteras del Pentélico', h:8,  ic:'temple', sub:'el mármol del Partenón · sobre todo mármol', d:[3,5],   m:[6,9],  rx:30, item:.12, eq:.04},
+ {k:'delfos',    n:'Oráculo de Delfos', en:'en Delfos', a:'a Delfos', de:'de Delfos',               h:24, ic:'lyre',   sub:'el ombligo del mundo · de todo y rarezas', d:[10,14], m:[7,10], rx:80, item:.35, eq:.15}
+];
+const VIAJ_HERO={ guerrero:{ic:'sword',el:'el Guerrero'}, mago:{ic:'staff',el:'el Mago'}, arquero:{ic:'bow',el:'el Arquero'} };
+const VIAJ_FLAV={
+ pireo:['Regateó con un mercader fenicio usando la mayéutica: acabó dándole la razón… y una rebaja.',
+        'Oyó a unos marineros discutir si el barco de Teseo, con todas sus tablas cambiadas, seguía siendo el mismo barco.',
+        'Un sofista le ofreció enseñarle a ganar cualquier debate por diez dracmas. Se quedó las diez dracmas.',
+        'Vio zarpar una trirreme hacia Siracusa y se acordó de Platón, que fue tres veces y casi no vuelve.'],
+ pentelico:['Ayudó a los canteros a sacar un bloque del mismo mármol con el que se levantó el Partenón.',
+        'Aprendió que la columna dórica no tiene basa: se apoya directamente en el suelo, como un buen argumento en sus premisas.',
+        'Pasó la noche junto al fuego oyendo a un viejo cantero recitar a Heráclito: «todo fluye», menos el mármol.',
+        'Un escultor le explicó que la estatua ya está dentro del bloque; solo hay que quitar lo que sobra. Aristóteles lo llamaría potencia.'],
+ delfos:['Leyó en el templo de Apolo: «Conócete a ti mismo». Volvió más callado.',
+        'La Pitia le respondió en hexámetros; tardó todo el camino de vuelta en entenderla.',
+        'Vio a peregrinos de toda Grecia preguntar por su futuro. Él preguntó por Febrero.',
+        'Querefonte preguntó aquí si había alguien más sabio que Sócrates. La respuesta, «nadie», le costó a Sócrates una vida de preguntas.']
+};
+function viajS(){
+  if(!S.viaj||typeof S.viaj!=='object'||Array.isArray(S.viaj)) S.viaj={v:1, tk:VIAJ.TK_START, ov:0, misDay:'', go:{}, n:0, hist:[], born:Date.now()};
+  const V=S.viaj, num=(x,d)=>(typeof x==='number'&&isFinite(x))?x:d;
+  V.tk=Math.max(0,Math.min(VIAJ.TK_MAX,Math.floor(num(V.tk,0))));
+  V.ov=Math.max(0,Math.min(VIAJ.OLIV_PER_TK-1,Math.floor(num(V.ov,0))));
+  V.n=Math.max(0,Math.floor(num(V.n,0))); V.dk=Math.max(0,Math.floor(num(V.dk,0)));
+  if(typeof V.misDay!=='string') V.misDay='';
+  if(!V.go||typeof V.go!=='object'||Array.isArray(V.go)) V.go={};
+  Object.keys(V.go).forEach(r=>{ if(!VIAJ_HERO[r]||!viajSlotValid(V.go[r])) delete V.go[r]; });
+  if(!Array.isArray(V.hist)) V.hist=[];
+  return V;
+}
+function viajSlotValid(g){
+  try{
+    if(!g||typeof g!=='object') return false;
+    if(!VIAJ_DEST.some(d=>d.k===g.k)) return false;
+    if(!isFinite(g.at)||!isFinite(g.end)||g.end<=g.at||g.end-g.at>30*3.6e6) return false;
+    const L=g.loot; if(!L||typeof L!=='object') return false;
+    ['d','m','rx'].forEach(k=>{ L[k]=Math.max(0,Math.min(999,Math.floor(+L[k]||0))); });
+    L.item=!!L.item; L.eq=!!L.eq; L.fl=typeof L.fl==='string'?L.fl:'';
+    return true;
+  }catch(e){ return false; }
+}
+const viajDest=k=>VIAJ_DEST.find(d=>d.k===k);
+/* «a las 13:10», «mañana a las 9:05» */
+function viajWhen(ts){ const k=dayKey(new Date(ts)); const t=new Date(); t.setDate(t.getDate()+1); return (k===today()?'':(k===dayKey(t)?'mañana ':'el '+new Date(ts).toLocaleDateString('es',{weekday:'long'})+' '))+'a las '+fmtClock(ts); }
+function viajBack(g){ return !!g&&Date.now()>=g.end; }
+function viajMult(role){ const lv=roleLvl((heroS().roleXp||{})[role]||0); return 1+Math.min(lv,60)/100; }
+function viajGive(n,why){
+  const V=viajS(); if(V.tk>=VIAJ.TK_MAX){ toast('🎫 Salvoconductos al máximo ('+VIAJ.TK_MAX+'): manda a alguien de viaje'); return; }
+  V.tk=Math.min(VIAJ.TK_MAX,V.tk+n); save(); toast('🎫 +'+n+' salvoconducto · '+why); viajRefresh();
+}
+/* ---------- enviar ---------- */
+function viajOpen(role){
+  const V=viajS(), h=heroS(), R=ROLES[role]; if(!R) return;
+  if(role===h.role){ toast(R.ic+' '+R.n+' es tu héroe activo: viaja quien se queda en casa'); return; }
+  if(V.go[role]){ if(viajBack(V.go[role])) return viajRecv(role); toast('🧭 '+R.n+' vuelve '+viajWhen(V.go[role].end)); return; }
+  const M=viajMult(role), lv=roleLvl((h.roleXp||{})[role]||0), noTk=V.tk<1;
+  $('#modal').innerHTML=`<div class="vjmhead"><span class="vjbig">${ART.icon(VIAJ_HERO[role].ic)}</span>
+      <div><div class="ovk">VIAJE · ${R.n.toUpperCase()} · NIVEL ${lv}</div><h3>¿A dónde va ${VIAJ_HERO[role].el}?</h3>
+      <div class="small mut">Cuesta 1 🎫 (tienes ${V.tk}). Vuelve solo, también con el móvil apagado. Su nivel mejora el botín (×${fmtX(M)}).</div></div></div>
+    <div class="itpick">${VIAJ_DEST.map(d=>`<div class="itrow vjdest">
+      <span class="ic2">${ART.icon(d.ic)}</span>
+      <div class="vjdtx"><div class="inm">${d.n} · ${d.h} h</div><div class="ibn">${d.sub}<br>🪙${Math.round(d.d[0]*M)}–${Math.round(d.d[1]*M)} · 🪨${Math.round(d.m[0]*M)}–${Math.round(d.m[1]*M)}${d.item?` · objeto ${Math.round(d.item*100)} %`:''}${d.eq?` · equipo ${Math.round(d.eq*100)} %`:''} · +${d.rx} XP de ${R.n}</div></div>
+      <button class="btn ${noTk?'':'primary'}" ${noTk?'disabled':''} onclick="viajGo('${role}','${d.k}')">Enviar</button></div>`).join('')}</div>
+    ${noTk?'<p class="small" style="margin-top:10px">Sin salvoconductos: completa las 3 misiones del día o varea el olivar (1 cada 3 cosechas).</p>':''}
+    <div class="mrowb"><button class="btn" onclick="closeCfg()">Cerrar</button></div>`;
+  $('#modalbg').classList.add('on');
+}
+function viajGo(role,k){
+  const V=viajS(), h=heroS(), d=viajDest(k), R=ROLES[role];
+  if(!d||!R||role===h.role||V.go[role]) return;
+  if(V.tk<1){ toast('🎫 No te quedan salvoconductos'); return; }
+  const M=viajMult(role), r=(a,b)=>a+Math.floor(Math.random()*(b-a+1)), fl=VIAJ_FLAV[k]||[''];
+  const now=Date.now();
+  V.tk--; V.go[role]={k, at:now, end:now+d.h*3.6e6,
+    loot:{d:Math.round(r(d.d[0],d.d[1])*M), m:Math.round(r(d.m[0],d.m[1])*M), rx:d.rx, item:Math.random()<d.item, eq:Math.random()<d.eq, fl:fl[Math.floor(Math.random()*fl.length)]}};
+  save(); closeCfg(); snd('item');
+  toast('🧭 '+R.n+' parte '+d.a+': vuelve '+viajWhen(V.go[role].end));
+  viajRefresh(); try{ checkLore(); checkFeats(); }catch(e){}
+}
+/* ---------- recibir ---------- */
+function viajRecv(role){
+  const V=viajS(), g=V.go[role], R=ROLES[role]; if(!g||!R) return;
+  if(!viajBack(g)){ toast('🧭 '+R.n+' vuelve '+viajWhen(g.end)); return; }
+  const d=viajDest(g.k), L=g.loot, h=heroS(), rs=resS();
+  delete V.go[role]; /* primero se cierra el viaje: nunca se cobra dos veces */
+  let it=null, eq=null;
+  const news=toastSink(()=>{
+    h.dracmas=(Number.isFinite(h.dracmas)?h.dracmas:0)+L.d;
+    rs.marmol=(Number.isFinite(rs.marmol)?rs.marmol:0)+L.m;
+    if(L.item){ try{ it=dropItem(); }catch(e){} if(!it) h.dracmas+=5; }
+    if(L.eq){ try{ eq=dropEquip(.55,.35,.08,.02,0); }catch(e){} }
+    const lv0=roleLvl(h.roleXp[role]||0); h.roleXp[role]=(h.roleXp[role]||0)+L.rx; const lv1=roleLvl(h.roleXp[role]);
+    if(lv1>lv0) toast(R.ic+' '+R.n+' sube a nivel '+lv1+' (viajando)');
+    V.n++; if(g.k==='delfos') V.dk=(V.dk||0)+1; V.hist.unshift({t:Date.now(),k:g.k,r:role,d:L.d,m:L.m}); V.hist=V.hist.slice(0,30);
+    save(); checkFeats(); checkLore();
+  });
+  refreshScreen();
+  snd('build'); vib(20);
+  $('#modal').innerHTML=`<div class="ovres vjres">
+    <div class="ovart big vjbig">${ART.icon(VIAJ_HERO[role].ic)}</div>
+    <div class="ovk">VIAJE CUMPLIDO · ${d.n.toUpperCase()}</div>
+    <div class="ovbig">${R.ic} ${R.n} ha vuelto</div>
+    <p class="vjfl">«${esc(L.fl)}»</p>
+    <div><span class="itemget">🪙 <b>+${L.d}</b>&nbsp;dracmas</span> <span class="itemget">🪨 <b>+${L.m}</b>&nbsp;mármol</span></div>
+    ${it?`<div class="itemget">${ITEMS[it].e} <b>${ITEMS[it].n}</b> en el equipaje</div>`:(L.item?'<div class="itemget">🎒 Traía un objeto, pero tu inventario está lleno: +5 🪙</div>':'')}
+    ${eq?`<div class="itemget">${eq.it.ic} <b>${esc(eq.it.n)}</b>${eq.dup?' (repetida → dracmas)':''}</div>`:''}
+    <div class="ovline">+${L.rx} XP de ${R.n} · nivel ${roleLvl(h.roleXp[role]||0)}</div>
+    <div class="endnews" hidden></div>
+    <div class="mrowb" style="justify-content:center"><button class="btn" onclick="closeCfg()">Volver</button>${V.tk>0?`<button class="btn primary" onclick="viajOpen('${role}')">🧭 Otro viaje (🎫 ${V.tk})</button>`:''}</div></div>`;
+  $('#modalbg').classList.add('on');
+  try{ endNewsAttach(document.querySelector('#modal .vjres .endnews'), news); }catch(e){}
+  try{ if(window.FXV2&&FXV2.sparks) FXV2.sparks(innerWidth/2, innerHeight*.3, true, false); }catch(e){}
+  viajRefresh();
+}
+/* ---------- Polis: sección de viajes ---------- */
+function viajSectionHTML(){
+  const V=viajS(), h=heroS();
+  const rows=Object.keys(ROLES).map(role=>{
+    const R=ROLES[role], g=V.go[role], lv=roleLvl((h.roleXp||{})[role]||0);
+    let st, btn='', cls='';
+    if(role===h.role){ st='Contigo en la Campaña (el héroe activo no viaja)'; cls='home'; }
+    else if(g&&viajBack(g)){ st='¡Ha vuelto '+viajDest(g.k).de+' con su botín!'; btn=`<button class="btn primary" onclick="viajRecv('${role}')">Recibir</button>`; cls='back'; }
+    else if(g){ const d=viajDest(g.k), p=Math.max(0,Math.min(1,(Date.now()-g.at)/(g.end-g.at)));
+      st=`De viaje ${d.en} · vuelve ${viajWhen(g.end)}<div class="vjbar"><i style="width:${Math.round(p*100)}%"></i></div>`; cls='away'; }
+    else { st='En casa, listo para partir'; btn=`<button class="btn ${V.tk?'':'ghost'}" onclick="viajOpen('${role}')">🧭 Enviar</button>`; }
+    return `<div class="itrow vjhero ${cls}"><span class="ic2">${ART.icon(VIAJ_HERO[role].ic)}</span>
+      <div style="flex:1;min-width:0"><div class="inm">${R.n} <span class="small mut">· nivel ${lv}</span></div><div class="ibn">${st}</div></div>${btn}</div>`;
+  }).join('');
+  return `<div class="vjsec card-ui" id="vjsec">
+    <div class="vjhead"><div><div class="ovk">VIAJES DE TUS HÉROES</div><div class="vjt">🎫 ${pl(V.tk,'salvoconducto')}${V.tk>=VIAJ.TK_MAX?' (máximo)':''}</div></div></div>
+    <div class="vjrows">${rows}</div>
+    <details class="ovhow"><summary>¿Cómo funciona?</summary>
+      <p>Los héroes que no llevas activos pueden salir de viaje y vuelven solos, también con el móvil apagado: <b>El Pireo</b> (4 h, sobre todo dracmas), <b>las canteras del Pentélico</b> (8 h, sobre todo mármol) u <b>Oráculo de Delfos</b> (24 h, de todo y rarezas). Cuanto más alto su nivel, más traen, y vuelven con experiencia de su oficio.</p>
+      <p>Cada viaje cuesta un <b>salvoconducto 🎫</b>: ganas uno al completar las 3 misiones del día y otro cada 3 cosechas del olivar (llevas ${V.ov}/${VIAJ.OLIV_PER_TK}). Puedes guardar hasta ${VIAJ.TK_MAX}.</p>
+    </details>
+  </div>`;
+}
+function viajReady(){ const V=viajS(); return Object.values(V.go).some(viajBack); }
+function viajRefresh(){
+  try{
+    const s=document.getElementById('vjsec');
+    if(s){ const open=s.querySelector('details.ovhow')&&s.querySelector('details.ovhow').open; const t=document.createElement('div'); t.innerHTML=viajSectionHTML(); const el=t.firstElementChild; if(open) el.querySelector('details.ovhow').open=true; s.replaceWith(el); }
+    const tab=document.querySelector('.tab[data-s="city"]'); if(tab&&viajReady()) tab.classList.add('ovready');
+    const chip=document.getElementById('vjchip'); if(chip) chip.outerHTML=viajChipHTML();
+  }catch(e){}
+}
+function viajChipHTML(){
+  try{ const V=viajS(), back=Object.keys(V.go).filter(r=>viajBack(V.go[r]));
+    if(back.length) return `<button class="chip on" id="vjchip" onclick="viajGoSec()">🧭 ${back.length>1?'Viajeros de vuelta':ROLES[back[0]].n+' ha vuelto'}</button>`;
+    if(V.tk>0&&Object.keys(ROLES).some(r=>r!==heroS().role&&!V.go[r])) return `<button class="chip" id="vjchip" onclick="viajGoSec()">🧭 ${pl(V.tk,'salvoconducto')}</button>`;
+    return '<span id="vjchip" hidden></span>';
+  }catch(e){ return ''; }
+}
+function viajGoSec(){ try{ closeCfg(); }catch(e){} show('city'); setTimeout(()=>{ const s=document.getElementById('vjsec'); if(s) s.scrollIntoView({behavior:'smooth',block:'start'}); },120); }
+
+/* ---------- enganches ---------- */
+(function(){
+  /* Polis: tras el olivar */
+  const _rc=renderCity;
+  renderCity=function(){ _rc(); try{ if(!document.getElementById('vjsec')){ const ov=document.getElementById('ovsec'); const html=viajSectionHTML(); if(ov) ov.insertAdjacentHTML('afterend',html); else { const z=$('#cityzone'); if(z) z.insertAdjacentHTML('afterbegin',html); } } viajRefresh(); }catch(e){} };
+  /* Inicio: los roles de viaje se marcan en la hoja del héroe */
+  const _ri=renderInicio;
+  renderInicio=function(){ _ri.apply(this,arguments); try{ const V=viajS(); document.querySelectorAll('#s-inicio .rolebtn').forEach(b=>{ const m=/setRole\('(\w+)'\)/.exec(b.getAttribute('onclick')||''); const g=m&&V.go[m[1]];
+      if(g){ b.classList.add('away'); const rl=b.querySelector('.rl'); if(rl) rl.textContent=viajBack(g)?'🧭 ¡ha vuelto!':'🧭 de viaje'; } }); }catch(e){} };
+  /* Inicio: chip en «Hoy» */
+  const _hs=hoyStripHTML;
+  hoyStripHTML=function(){ const s=_hs(); try{ const i=s.lastIndexOf('</div></div>'); return i<0?s:s.slice(0,i)+viajChipHTML()+s.slice(i); }catch(e){ return s; } };
+  /* salvoconducto por las 3 misiones del día (una vez al día) */
+  const _qe=qEvent;
+  qEvent=function(ev,sid){ _qe(ev,sid); try{ const q=questS(), V=viajS();
+    if(V.misDay!==q.day&&q.picks.length&&q.picks.every(p=>{ const d=qDef(p.id); return d&&p.prog>=d.n; })){ V.misDay=q.day; save(); viajGive(1,'misiones del día cumplidas'); } }catch(e){} };
+  /* salvoconducto cada 3 cosechas */
+  const _of=olivFinish;
+  olivFinish=function(){ const n0=olivS().n; _of.apply(this,arguments); try{ if(olivS().n>n0){ const V=viajS(); V.ov++; if(V.ov>=VIAJ.OLIV_PER_TK){ V.ov=0; save(); viajGive(1,'3 cosechas del olivar'); } else save(); } }catch(e){} };
+  /* el héroe de viaje no puede ser el activo */
+  const _sr=setRole;
+  setRole=function(rk){ try{ const g=viajS().go[rk]; if(g){ toast(viajBack(g)?'🧭 '+ROLES[rk].n+' ya ha vuelto: recíbelo en la Polis':'🧭 '+ROLES[rk].n+' está de viaje: vuelve '+viajWhen(g.end)); return; } }catch(e){} return _sr(rk); };
+  setInterval(()=>{ if(!document.hidden) viajRefresh(); }, 60000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) viajRefresh(); });
+})();
+
+/* ---------- narrativa y hazañas ---------- */
+LORE.push(
+ {id:'L30',t:'XXX · Los caminos de Grecia',x:'Los griegos viajaban a pie, en mula o en barco, y casi nunca solos. Tales fue a Egipto a medir pirámides con su sombra; Platón, tres veces a Siracusa; Heródoto, a todas partes. Viajar era otra forma de preguntar. Hoy uno de tus héroes ha salido al camino: volverá con algo más que dracmas.',c:()=>viajS().n>=1||Object.keys(viajS().go).length>0},
+ {id:'L31',t:'XXXI · Conócete a ti mismo',x:'En el templo de Apolo en Delfos había tres inscripciones. La más famosa, «Conócete a ti mismo», Sócrates la convirtió en programa de vida: saber lo que uno no sabe. Las otras dos, «Nada en exceso» y una misteriosa «E», siguen dando que pensar. Tu viajero las ha leído con sus propios ojos.',c:()=>viajS().dk>=1}
+);
+FEATS.push(
+ {id:'f32',ic:'🧭',n:'Primer viaje',d:'Un héroe vuelve de viaje',p:10,c:()=>viajS().n>=1},
+ {id:'f33',ic:'🗺️',n:'Trotamundos',d:'25 viajes cumplidos',p:40,c:()=>viajS().n>=25},
+ {id:'f34',ic:'🏛️',n:'Peregrino de Delfos',d:'5 viajes a Delfos',p:30,c:()=>viajS().dk>=5}
+);
+viajS();
+try{ if(typeof cur!=='undefined'){ if(cur==='inicio') renderInicio(); else if(cur==='city') renderCity(); } }catch(e){}
+
+</script>
+<script>
+'use strict';
+/* ════════════════════════════════════════════════════════════════════
    v32 — LA LECHUZA DE ATENEA (avisos push)
    La app guarda la suscripción en tu gist (lechuza-sub.json). Una tarea
    programada de GitHub (cada 2 h) lee tu partida sincronizada y, solo si
@@ -4989,7 +5223,7 @@ function b64u(s){ const pad='='.repeat((4-s.length%4)%4); const b=atob((s+pad).r
 async function lechuzaPushSub(sub){
   const c=syncCfg(); if(!c) throw new Error('sin sincronización');
   const L=lechuzaS();
-  const body={sub: sub?(sub.toJSON?sub.toJSON():sub):null, tz:S.tzName||'', basket:!!L.basket, streak:!!L.streak, quiet:[23,8], max:4, updatedAt:Date.now()};
+  const body={sub: sub?(sub.toJSON?sub.toJSON():sub):null, tz:S.tzName||'', basket:!!L.basket, streak:!!L.streak, viaje:L.viaje!==false, quiet:[23,8], max:4, updatedAt:Date.now()};
   const r=await gh('/gists/'+c.gid,{method:'PATCH',body:JSON.stringify({files:{[LECHUZA.FILE]:{content:JSON.stringify(body)}}})},c.tok);
   if(r&&r.status===404) throw new Error('no encuentro tu gist de sincronización');
 }
@@ -5028,14 +5262,15 @@ async function lechuzaTest(){
 function lechuzaHTML(){
   const L=lechuzaS(), sp=lechuzaSupport(), sync=!!syncCfg();
   let st;
-  if(L.on) st='<b>Activada'+(LZ.here===false?' en otro dispositivo':'')+'.</b> Te avisa cuando tu cesto está lleno y, a última hora, si tu racha peligra. Nunca entre las 23:00 y las 8:00; máximo 4 avisos al día. <span class="lzlast"></span>';
+  if(L.on) st='<b>Activada'+(LZ.here===false?' en otro dispositivo':'')+'.</b> Te avisa cuando tu cesto está lleno, cuando vuelve un viajero y, a última hora, si tu racha peligra. Nunca entre las 23:00 y las 8:00; máximo 4 avisos al día. <span class="lzlast"></span>';
   else if(!sp.ok) st=sp.why;
   else if(!sync) st='Necesita la sincronización en la nube (arriba): Hermes consulta tu partida desde ahí.';
-  else st='Avisos al móvil cuando el olivar esté lleno o tu racha esté en peligro. Máximo 4 al día, nunca de noche.';
+  else st='Avisos al móvil cuando el olivar esté lleno, vuelva un viajero o tu racha esté en peligro. Máximo 4 al día, nunca de noche.';
   return `<div class="lechuzacfg"><p style="margin-top:12px"><b>✉ Los avisos de Hermes</b><br><span class="small">${st}</span></p>
   ${L.on?`<div class="mrowb">
       <label class="small lzck"><input type="checkbox" ${L.basket?'checked':''} onchange="lechuzaPrefs('basket',this.checked)"> cesto lleno</label>
-      <label class="small lzck"><input type="checkbox" ${L.streak?'checked':''} onchange="lechuzaPrefs('streak',this.checked)"> racha en peligro</label></div>
+      <label class="small lzck"><input type="checkbox" ${L.streak?'checked':''} onchange="lechuzaPrefs('streak',this.checked)"> racha en peligro</label>
+      <label class="small lzck"><input type="checkbox" ${L.viaje!==false?'checked':''} onchange="lechuzaPrefs('viaje',this.checked)"> viajeros de vuelta</label></div>
     <div class="mrowb"><button class="btn" onclick="lechuzaTest()">Probar aviso</button><button class="btn" onclick="lechuzaOn()">${LZ.here===false?'Recibirlos aquí':'Reconectar'}</button><button class="btn" style="color:var(--bad)" onclick="lechuzaOff()">Desactivar</button></div>`
   : (sp.ok&&sync?`<div class="mrowb"><button class="btn primary" onclick="lechuzaOn()">✉ Activar avisos</button></div>`:'')}</div>`;
 }
@@ -5069,12 +5304,13 @@ async function lechuzaRefreshStatus(){
 function lechuzaDevId(){ try{ let id=localStorage.getItem('cesarDev'); if(!id){ id=Math.random().toString(36).slice(2,10); localStorage.setItem('cesarDev',id); } return id; }catch(e){ return 'x'; } }
 
 /* al tocar un aviso: ir al olivar */
-function lechuzaGo(url){ try{ if(String(url||'').includes('olivar')){ closeCfg(); show('city'); setTimeout(()=>{ const s=document.getElementById('ovsec'); if(s) s.scrollIntoView({behavior:'smooth',block:'start'}); },150); } }catch(e){} }
+function lechuzaGo(url){ try{ if(String(url||'').includes('viajes')&&typeof viajGoSec==='function'){ viajGoSec(); return; } if(String(url||'').includes('olivar')){ closeCfg(); show('city'); setTimeout(()=>{ const s=document.getElementById('ovsec'); if(s) s.scrollIntoView({behavior:'smooth',block:'start'}); },150); } }catch(e){} }
 try{ if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message',e=>{ if(e.data&&e.data.lechuza) lechuzaGo(e.data.lechuza); if(e.data&&e.data.lzchange) lechuzaRefreshStatus(); }); }catch(e){}
 /* al abrir la app con los avisos activos: comprobar en silencio que la suscripción guardada sigue siendo la de este dispositivo */
 setTimeout(()=>{ try{ if(lechuzaS().on&&syncCfg()&&location.protocol.startsWith('http')) lechuzaRefreshStatus(); }catch(e){} }, 6000);
 try{ if(location.hash==='#olivar'||/[?&]olivar\b/.test(location.search)) setTimeout(()=>lechuzaGo('olivar'),600); }catch(e){}
-try{ addEventListener('hashchange',()=>{ if(location.hash==='#olivar') lechuzaGo('olivar'); }); }catch(e){}
+try{ addEventListener('hashchange',()=>{ if(location.hash==='#olivar') lechuzaGo('olivar'); if(location.hash==='#viajes') lechuzaGo('viajes'); }); }catch(e){}
+try{ if(location.hash==='#viajes') setTimeout(()=>lechuzaGo('viajes'),600); }catch(e){}
 lechuzaS();
 
 </script>
@@ -5084,7 +5320,7 @@ lechuzaS();
    v3 UI — «Figuras Negras»: cromo, iconos, ánfora del héroe, bestiario en
    figura negra, escenas de los lugares míticos y pantalla de Novedades.
    ════════════════════════════════════════════════════════════════════ */
-const V3={ ver:'v32', name:'César el filósofo III' };
+const V3={ ver:'v33', name:'César el filósofo III' };
 
 /* ---------- cromo: marca, botones y barra inferior con iconos propios ---------- */
 (function(){
@@ -5181,21 +5417,23 @@ function v3Gates(root){
 /* ---------- Novedades (una vez por versión) ---------- */
 function v3News(force){
   try{
-    const u=uiS();
-    if(!force&&u.news===V3.ver) return;
+    const u=uiS(), seen=u.news||'';
+    if(!force&&seen===V3.ver) return;
     u.news=V3.ver; save();
     if(!force&&(S.xp||0)<20) return; /* jugador nuevo: ya le recibe el Oráculo */
+    const solo33=!force&&seen==='v32'; /* quien ya vio las de v32 solo ve lo nuevo */
     $('#modal').innerHTML=`<div class="newshead">${ART.amphora(ART.heroFigure(heroS()),{s:.98})}</div>
-      <h3 style="text-align:center;margin-top:4px">${V3.name}</h3>
-      <p class="small" style="text-align:center;margin-top:-2px">Un juego nuevo con tu misma partida: nada de tu progreso se ha tocado.</p>
+      <h3 style="text-align:center;margin-top:4px">${solo33?'Novedades':V3.name}</h3>
+      <p class="small" style="text-align:center;margin-top:-2px">${solo33?'Tu partida sigue intacta.':'Un juego nuevo con tu misma partida: nada de tu progreso se ha tocado.'}</p>
       <div class="newslist">
-        <div class="newsit"><span class="ni">${ART.icon('olive')}</span><div><b>El Olivar de la Academia</b><br>Se llena solo, también con el móvil apagado. Vuelve cada ~8 h y <b>varéalo</b>: un fallo pendiente, un repaso que tocaba y una pregunta nueva. Aceitunas → 🪙 y 🪨. Doce cosechas en la semana ganan el <b>ánfora panatenaica</b>.</div></div>
+        <div class="newsit"><span class="ni">${ART.icon('sandal')}</span><div><b>Viajes de tus héroes</b><br>Los héroes que no llevas activos pueden salir de viaje: <b>4 h</b> al Pireo, <b>8 h</b> a las canteras o <b>24 h</b> a Delfos. Vuelven solos, con el móvil apagado, con dracmas, mármol, a veces objetos o equipo, y suben de nivel su oficio. Cada viaje cuesta un <b>salvoconducto 🎫</b>: uno por cumplir las 3 misiones del día y otro cada 3 cosechas. Para empezar, tienes 2.</div></div>
+${solo33?'':`        <div class="newsit"><span class="ni">${ART.icon('olive')}</span><div><b>El Olivar de la Academia</b><br>Se llena solo, también con el móvil apagado. Vuelve cada ~8 h y <b>varéalo</b>: un fallo pendiente, un repaso que tocaba y una pregunta nueva. Aceitunas → 🪙 y 🪨. Doce cosechas en la semana ganan el <b>ánfora panatenaica</b>.</div></div>
         <div class="newsit"><span class="ni">${ART.icon('amphora')}</span><div><b>«Figuras negras»</b><br>Todo el arte rehecho como cerámica ática: figuras negras sobre terracota de día, figuras rojas sobre negro de noche. Tu héroe vive pintado en un ánfora.</div></div>
         <div class="newsit"><span class="ni">${ART.icon('wing')}</span><div><b>Los avisos de Hermes</b><br>El mensajero de los dioses te avisa al móvil cuando el cesto está lleno o tu racha peligra. Se activa en ⚙ Ajustes.</div></div>
         <div class="newsit"><span class="ni">${ART.icon('sunmoon')}</span><div><b>Tu día empieza a tu medianoche</b><br>Antes el día del juego cambiaba a medianoche UTC (las 18:00 en México). Ahora rachas, misiones y expedición van con tu reloj.</div></div>
         <div class="newsit"><span class="ni">${ART.icon('gear')}</span><div><b>Pulido de estudio</b><br>Más de 50 arreglos: marcadores al instante, textos más legibles, el Reto del Oráculo ya sobrevive a una recarga y el móvil gasta menos batería en reposo.</div></div>
-      </div>
-      <div class="mrowb newsbtns" style="justify-content:center"><button class="btn primary" onclick="closeCfg();show('city');setTimeout(()=>{const s=document.getElementById('ovsec'); if(s) s.scrollIntoView({behavior:'smooth',block:'start'});},120)">🫒 Ver mi olivar</button><button class="btn" onclick="closeCfg()">Luego</button></div>`;
+`}      </div>
+      <div class="mrowb newsbtns" style="justify-content:center"><button class="btn primary" onclick="viajGoSec()">🧭 Ver los viajes</button><button class="btn" onclick="closeCfg()">Luego</button></div>`;
     $('#modalbg').classList.add('on');
   }catch(e){}
 }
